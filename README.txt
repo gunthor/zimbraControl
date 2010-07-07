@@ -1,4 +1,4 @@
-@todo: write this.
+@todo: write this...
 
 1. About this package
 ******************************************
