@@ -1,0 +1,3 @@
+2010-07-07 Günter Homolka  <g.homolka@belisk.com>
+
+  * Build version 1.0.0 (Alpha Version, don't work stable)

@@ -1,0 +1,11 @@
+---------------------------------
+ The TYPO3 licensing conditions
+ 2010, Günther Homolka (g.homolka@belisk.com)
+ Document version 1.0.0, 07-2010
+---------------------------------
+
+The zimbraControl project is free software under the terms of the
+GNU General Public License version 2 or any later version.
+The GNU/GPL license (version 2) is found in the file GPL.txt
+
+---------------------------------
