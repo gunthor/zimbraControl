@@ -1,0 +1,214 @@
+IMGetRoster -- get buddy list
+-----------
+<IMGetRosterRequest/>
+
+<IMGetRosterResponse>
+     <presence SEE BELOW/> // MY current presence value
+     
+     <chats>
+        [  // 0 or more active chats
+           <chat thread="threadID">
+              <pcps> // participants
+                 [<p addr="foo@bar.com"/>]* // participants (NOT including yourself) in this chat
+              </pcps>
+           </chat>
+        ]*
+     </chats>   
+     
+     <items>
+        [
+          <item addr="foo@bar.com" [name="friendly name"] [ask="ASK"] subscription="both|from|to" groups="group,group,group">
+             [<presence SEE BELOW>]*
+             
+             [ // block/allow list 
+                <block type="id|group|subscription|default" ( [id="foo@bar.com"] OR [value="both|to|from|none"] ) priority="positive number MUST BE UNIQUE">
+                   <message/>
+                   <presence-in/>
+                   <presence-out/>
+                </block>
+             ]*
+             
+          </item>
+        ]*  // 0 or more items 
+     </items>
+     <subscription-defaults>
+        [block/allow list "fall through" settings]*
+     </subscription-defaults>
+</IMGetRosterResponse>
+
+For "item"
+===========
+  'subscription' is the current confirmed state of the subcription
+   'ask' means we are pending a response to our request to subscribe/unsubscribe
+      ---> EG:  (subscription="none" ask="subscribe") means we're waiting
+           for a response to subscribe, but we haven't received one yet
+
+
+IMSubscribe -- subscribe to someone's presence / modify subscription 
+-----------
+<IMSubscribeRequest addr="foo@bar.com" [name="friendly name"] [groups="group,group..."] [op="add|remove"]/>
+
+<IMSubscribeResponse/>
+
+
+
+IMAuthorizeSubscribe -- used to OK another user adding you to their buddy list
+--------------------    send this in response to a <subscribe> notification
+                        Optionally, add this user to my buddy list as well
+
+<IMAuthorizeSubscribeRequest addr="foo@bar.com" authorized="true|false" [add="true|false" groups="group,group..."]/>
+<IMAuthorizeSubscribeResponse/>
+
+
+
+
+IMSetPresence -- modify your presence state
+-------------
+<IMSetPresenceRequest>
+   [
+     <presence [lang="en"] [show="away|chat|dnd|xa|online|offline"] [priority="0-255"] [status="STATUS"]/>
+   ]+  // if multiple, each must have a different lang  
+</IMSetPresenceRequest>
+
+<IMSetPresenceResponse>
+
+
+IMGetChat -- return the chat history (param = num messages)
+---------
+<IMGetChatRequest thread="threadID" [seq="1st-sequence-to-retrieve"]/>
+
+<IMGetChatResponse>
+   <chat thread="threadID">
+      <pcps> // like email-element-cache -- only valid for this single message!
+         <p id="num" addr="foo@bar.com" [name="friendly"] [resource="resource"]/>*
+      </pcps>
+      <messages>
+         <message seq="sequence-number" ts="timestamp" from="id">
+            [<subject [lang="LANGUAGE"]>SUBJECT</subject>]*   // HTML
+            [<body [lang="LANGUAGE">BODY</body>]              // HTML
+         </message>
+      </messages>   
+   </chat>
+</IMGetChatResponse>
+
+
+IMSendMessage -- send a new message, optional chat parameter
+-------------
+To an existing chat:
+<IMSendMessageRequest>
+   <message thread="threadID">
+      [<subject [lang="LANGUAGE"]>SUBJECT</subject>]*   // HTML
+      [<body [lang="LANGUAGE">BODY</body>]              // HTML
+   </message>
+</IMSendMessageRequest>
+   
+...OR create a new chat:
+<IMSendMessageRequest>
+   <message addr="foo@bar.com">
+      [<subject [lang="LANGUAGE"]>SUBJECT</subject>]*   // HTML
+      [<body [lang="LANGUAGE">BODY</body>]              // HTML
+   </message>
+</IMSendMessageRequest>
+
+<IMSendMessageResponse thread="thread id"/>
+
+
+   
+IMModifyChat -- add/remove users from multi-user chat, adjust save preferences, etc
+------------
+<IMModifyChatRequest thread="threadId" op="close"/>
+<IMModifyChatRequest thread="threadId" op="adduser" addr="address>INVITATION_MESSAGE</IMModifyChatRequest>
+
+
+IMJoinChat -- join a multi-user chat you have been invited to
+----------
+<IMJoinChatRequest thread="threadId"/>
+</IMJoinChatResponse>
+// **look for notification: <n type="enteredchat" thread="threadId"/>**
+
+
+
+IMModifyWhitelist -- block/allow
+-----------------
+
+
+
+IMGatewayList - gateways to external IM services
+--------------
+<IMGatewayListRequest/>
+
+
+<IMGatewayListResponse>
+  <service name="name" type="aim|msn|yahoo|icq"/>
+</IMGatewayListResponse/>
+
+
+IMGatewayRegister 
+-----------------
+<IMGatewayRegister op="register" service="SERVICE_NAME" name="remoteName" password="remotePassword"/>
+<IMGatewayRegister op="unregister" service="SERVICE_NAME"/>
+
+<IMGatewayRegisterResponse result="0|1"/>
+
+
+
+============================================================
+IM NOTIFICATIONS
+============================================================
+
+//
+// In soap header block (see soap.txt):
+//
+  [<soap:Header>
+     <context xmlns="urn:zimbra">
+       ...
+       <notify>
+          [<deleted.../>]
+          [<created.../>]
+          [<modified.../>]
+          [
+             <im>
+                [
+                //  Asynchronous Roster Response                
+                    <n type="roster">     
+                       <n type="subscribed"...>
+                       <n type="unsubscribed"...>
+                    </n>
+                ]?
+             
+                [
+                // NEW MESSAGE RECEIVED:
+                   <n type="message" from="address" thread="chat-id" ts="TIMESTAMP>
+                      [<subject [lang="LANG"]>SUBJECT</subject>]
+                      [<body [lang="LANG"]>BODY</body>]
+                   </n>
+                ]*
+                [
+                // Presence update for a specific user
+                   <n type="presence" from="FROMADDR" [lang="en"] [show="away|chat|dnd|xa"] [priority="0-255"] [status="STATUS"]/>
+                ]*
+                [
+                // User wants to add you to their buddy list (see <AuthorizeSubscribe> above)
+                   <n type="subscribe" from="FROMADDR"/> 
+                ]*
+                [
+                   <n type="subscribed" to="TOADDR" name="NAME" groups="GROUPS" [ask="subscribe|unsubscribe"]/> // you added them to your buddy list
+                ]*
+                [
+                   <n type="unsubscribed" to="TOADDR" groups="GROUPS" [ask="subscribe|unsubscribe"]/> // you removed them from your buddy list
+                ]*
+                [
+                   <n type="enteredchat" thread="chat-id" addr="ADDRESS"/> // specified user entered the chat
+                ]*
+                [
+                   <n type="leftchat" thread="chat-id" addr="ADDRESS"/> // specified user left the chat
+                ]*
+                [
+                 // An invitation to join a group chat:
+                   <n type="invited" thread="chat-id" addr="ADDRESS">INVITATION_MESSAGE</n>
+                ]*
+                
+                
+             </im>]
+          ]?     
+        </notify>]
