@@ -24,6 +24,4 @@
 ********************************************
 
 (c) 
-    A few additions & modifications made by Michael Stucki and others
-
 -- Günther Homolka <g.homolka@belisk.com>  Wed, 07 July 2010
