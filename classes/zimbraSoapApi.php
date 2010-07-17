@@ -26,6 +26,20 @@
 
 require_once 'zimbraConfig.php';
 
+
+/**
+ * Checks if value exists
+ *
+ * @param mixed var
+ * @author	Günther Homolka <g.homolka@belisk.com>
+ * @return value, or false if it's not existing
+ */
+function c(&$var){
+    if(isset($var))return $var;
+    return false;
+}
+
+
 /**
  * zimbraControl - Toolkit to control Zimbra
  * 
@@ -52,9 +66,9 @@ class zimbraSoapApi{
 	
 	var $cacheconfig=array();
 	
-	// stored in file: config[admin/user][username][sessid]=sessid
-	// stored in file: -""-                        [authtoken]=authtoken
-	// stored in file: -""-                        [endtime]=endtime
+	// stored in file: cacheconfig[admin/user][username][sessid]=sessid
+	// stored in file: -""-                             [authtoken]=authtoken
+	// stored in file: -""-                              [endtime]=endtime
 		
 	var $admin_username;
 	var $user_username;
@@ -110,6 +124,11 @@ class zimbraSoapApi{
 		
 		$a=$this->dosoap_admin($action,$soap);
 		
+		// Error loggen...
+		if(isset($ret['soap:Body']['soap:Fault']['soap:faultstring'])){
+		    zlog::soapErrlog($ret);
+		}
+
 		return $a;
 	}
 	
@@ -136,7 +155,12 @@ class zimbraSoapApi{
 		}
 		
 		$a=$this->dosoap_user($action,$urn,$soap);
-		
+
+		// Error loggen...
+		if(isset($ret['soap:Body']['soap:Fault']['soap:faultstring'])){
+		    zlog::soaperrlog($ret);
+		}
+
 		return $a;
 		
 	}
@@ -158,7 +182,7 @@ class zimbraSoapApi{
 			}
 		}
 		$this->_timestamp=time().'000';
-		$this->path=dirname(__FILE__).'/';
+		$this->path=dirname(__FILE__).'/../';
 	}
 	
 	/**
@@ -189,37 +213,33 @@ class zimbraSoapApi{
 			new SoapVar($soap,XSD_ANYXML)
 		);
 		
-		
 		$options=array('uri'=>'urn:zimbraAdmin');
-		
+
 		$response=$this->dosoap($action,$header,$params,$options);
 		$response_a=$this->xml2array($response);
 						
-		
-		// Bei Fehlern...                  
-		if(isset($response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code'])){
-			
-			$err=$response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code'];
-			
+		$err=c($response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code']);
+
+		// Bei Fehlern...
+		if($err){
 			// Wenn AUTH fehlgeschlagen, aufhören...
 			if($err=='account.AUTH_FAILED'){
-				echo "AUTH FAILED";
-				return false;
-			
+				zlog::hardError('ADMIN AUTH FAILED!',array($action,$header,$params,$options));
+				exit;
+				
 			// Wenn Fehler und newlogin nicht getan, sondern auf vergangene Session vertraut => nochmal probieren
 			// mit erzwungenem einloggen
 			}else if($err=='service.AUTH_REQUIRED'){
 				if(!$forcenewlogin){
 					return $this->dosoap_admin($action,$soap,true);				
 				}else{
-					echo "AUTH FAILED (ENDLESS)";
-					return false;
+					zlog::hardError('ADMIN AUTH FAILED! (endless)',array($action,$header,$params,$options));
+					exit;
 				}
 			}
 		}
-			
 		
-		return $this->xml2array($response);
+		return $response_a;
 	}
 	
 	/**
@@ -255,33 +275,31 @@ class zimbraSoapApi{
 		$options=array('uri'=>'urn:'.$urn);
 		
 		$response=$this->dosoap($action,$header,$params,$options);
-		
 		$response_a=$this->xml2array($response);
 		
-		
+
+		$err=c($response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code']);
+
 		// Bei Fehlern...
-		if(isset($response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code'])){
-			
-			$err=$response_a['soap:Body']['soap:Fault']['soap:detail']['Error']['Code'];
-			
+		if($err){
 			// Wenn AUTH fehlgeschlagen, aufhören...
 			if($err=='account.AUTH_FAILED'){
-				echo "AUTH FAILED";
+				zlog::soapErrLog('AUTH FAILED: ');
 				return false;
-			
+
 			// Wenn Fehler und newlogin nicht getan, sondern auf vergangene Session vertraut => nochmal probieren
 			// mit erzwungenem einloggen
 			}else if($err=='service.AUTH_REQUIRED'){
 				if(!$forcenewlogin){
-					return $this->dosoap_user($urn,$action,$soap,true);				
+					return $this->dosoap_user($urn,$action,$soap,true);
 				}else{
-					echo "AUTH FAILED (ENDLESS)";
+					zlog::soapErrLog('AUTH FAILED (endless)');
 					return false;
 				}
 			}
 		}
 	
-		return $this->xml2array($response);
+		return $response_a;
 	}	
 	
 	/**
@@ -318,6 +336,12 @@ class zimbraSoapApi{
 		
 		$result=$this->dosoap('AuthRequest',$header,$params,$options,true);
 		
+		// IF AUTH FAILED
+		if(!$result){
+			zlog::hardError('ADMIN AUTH FAILED!',array($header,$params,$options));
+			exit;
+		}
+
 		// Store result to cache
 		$this->admin_sessid=$result['sessionId'];
 		$this->admin_authtoken=$result['authToken'];
@@ -368,6 +392,12 @@ class zimbraSoapApi{
 		$options=array('uri'=>'urn:zimbraAccount');
 		
 		$result=$this->dosoap('AuthRequest',$header,$params,$options,true);
+
+		// IF AUTH FAILED
+		if(!$result){
+			zlog::soapErrLog('AUTH FAILED: ');
+			return false;
+		}
 		
 		// Store result to cache
 		$this->user_sessid=$result['sessionId'];
@@ -402,18 +432,24 @@ class zimbraSoapApi{
 
 		}catch (SoapFault $exception) {
 		}
-		
+
+		// DEbug information...
 		if(zimbraConfig::debug){
+			$t=array(array('<','>'),array('&lt;','&gt;'));
+			ob_start();
 			echo "<pre>\n\n=============== SOAP ANFANG =======================\n";
 			
 			echo "\n\nREQUEST:m\n";
-			print_r($this->client->__getLastRequest());
+			print_r(str_replace($t[0],$t[1],$this->client->__getLastRequest()));
 			print_r( $this->xml2array($this->client->__getLastRequest()));
 			
 			echo "\n\nRESPONSEm:\n";
-			print_r($this->client->__getLastResponse());
+			print_r(str_replace($t[0],$t[1],$this->client->__getLastResponse()));
 			print_r( $this->xml2array($this->client->__getLastResponse()));
 			echo "\n====================SOAP ENDE ==================\n\n<pre>";
+			$f=ob_get_clean();
+			zlog::debugLog('SOAP DEBUG',$f);
+
 		}
 		
 		// Bei Login kommt hier der authtoken, sessid usw. zurück.
@@ -437,6 +473,7 @@ class zimbraSoapApi{
 	 * @author	Günther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
+	/*
 	private function soaperr($text,$client, $exception=''){
 		
 		
@@ -459,6 +496,7 @@ class zimbraSoapApi{
 		zlog::errlog($out);
 
 	}
+	*/
 	
 	/**
 	 * Build SOAP UserClinet
@@ -519,7 +557,7 @@ class zimbraSoapApi{
 		if(isset($this->options['parse']) && $this->options['parse']===false){
 			return $contents;
 		}
-		
+		$errrep=error_reporting(0);
 		// XML Parser herrichten...
 		ini_set('include_path', $this->path.'PEAR');
 		set_include_path($this->path.'PEAR');
@@ -534,12 +572,13 @@ class zimbraSoapApi{
 		if(!isset($this->options['donnotaskey']) || $this->options['donnotaskey']!=1){
 			$options['keyAttribute']='n';	
 		}
-		
+	
 		//  be careful to always use the ampersand in front of the new operator 				
 		$unserializer = new XML_Unserializer(
 			$options
 		);
 		
+		$d=false;
 		
 		$status = $unserializer->unserialize($contents, false);   
 
@@ -547,8 +586,10 @@ class zimbraSoapApi{
 			echo 'Error: ' . $status->getMessage();
 		}else{
 			$d = $unserializer->getUnserializedData();
-			return $d;
 		}
+		error_reporting($errrep);
+		
+		return $d;
 	}
 	
 	/**

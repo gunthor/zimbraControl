@@ -57,7 +57,9 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 	 * @return errs
 	 */
 	public function setRemoveUser($user,$set=1){
-		
+
+		$user['uid']=$this->makeUid($user['uid']);
+
 		$zuid=$this->getAccountIdbyName($user['uid']);
 		
 		// to write less...
@@ -67,48 +69,54 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 		if($set){
 			
 			// change entries if necessary...
-			//$f['']=($f['']);
-			
+
+
+			$f['displayname']=$f['fname'].' '.$f['sname'];
+			echo "-".$this->check($f['fname'])."-";
 			$soap='';
-			if($this->check($f['password'],0))		$soap.='<password>'.$f['password'].'</password>'; // zimbra needs a password.. :(
-			if($this->check($f['displayname'],0))	$soap.='<a n="displayName">'.$f['displayname'].'</a>';
-			if($this->check($f['fname'],0))			$soap.='<a n="gn">'.$f['fname'].'</a>';
-			if($this->check($f['sname'],0))			$soap.='<a n="sn">'.$f['sname'].'</a>';
-			if($this->check($f['title'],0))			$soap.='<a n="initials">'.$f['title'].'</a>';
+			if($this->check($f['password']))		$soap.='<password>'.$f['password'].'</password>'; // zimbra needs a password.. :(
+			if($this->check($f['displayname']))		$soap.='<a n="displayName">'.$f['displayname'].'</a>';
+			if($this->check($f['fname']))			$soap.='<a n="gn">'.$f['fname'].'</a>';
+			if($this->check($f['sname']))			$soap.='<a n="sn">'.$f['sname'].'</a>';
+			if($this->check($f['title']))			$soap.='<a n="initials">'.$f['title'].'</a>';
 			
-			/* #Not needed now
-			if($this->check($f['phone'],4))		$soap.='<a n="telephoneNumber">'.$f['phone'].'</a>';
-			if($this->check($f['street'],1))		$soap.='<a n="street">'.$f['street'].'</a>';
-			if($this->check($f['postal'],2,array(0)))		$soap.='<a n="postalCode">'.$f['postal'].'</a>';
-			if($this->check($f['location'],2))		$soap.='<a n="l">'.$f['location'].'</a>';
-			if($this->check($f['st'],0))	$soap.='<a n="st">'.$f['st'].'</a>';
-			if($this->check($f['staat'],0))		$soap.='<a n="co">'.$f['staat'].'</a>';
-			*/
+			 #Not needed now
+			if($this->check($f['phone'],'phone'))		$soap.='<a n="telephoneNumber">'.$f['phone'].'</a>';
+			if($this->check($f['street']))		$soap.='<a n="street">'.$f['street'].'</a>';
+			if($this->check($f['postal'],'postal'))		$soap.='<a n="postalCode">'.$f['postal'].'</a>';
+			if($this->check($f['location']))		$soap.='<a n="l">'.$f['location'].'</a>';
+			if($this->check($f['st']))			$soap.='<a n="st">'.$f['st'].'</a>';
+			if($this->check($f['staat']))			$soap.='<a n="co">'.$f['staat'].'</a>';
+			
 			
 			// <-start specific
 			
-			if($this->check($f['forwarding_email'],0)){
-				
+			if($this->check($f['forwarding_email'],'email')){
+				echo "MAILCHECK";
 				// Wenn als forwarding email_adresse die domain (@domain.com) angegeben ist, dann diese löschen, nicht erlaubt.
-				if(strpos($f['forwarding_email'],$this->domain)){
+				if(strpos($f['forwarding_email'],  zimbraConfig::defaultEmailDomain)){
 					$f['forwarding_email']='';
+				}else{
+					$soap.='<a n="zimbraPrefMailForwardingAddress">'.$f['forwarding_email'].'</a>';    // zimbraMailForwardingAddress = hidden for user...
 				}
-				$soap.='<a n="zimbraPrefMailForwardingAddress">'.$f['forwarding_email'].'</a>';    // zimbraMailForwardingAddress = hidden for user...
 			}
 			
 			// end specific->
 			
 			// Create
-			if($zuid==-1){
+			if($zuid===false){
 				$what='CreateAccountRequest';
 				
-				if(!$this->check($f['password']))	$soap.='<password>'.dorandompassword().'</password>'; // zimbra needs a password.. :(
+				if(!$this->check($f['password'],'password'))	$soap.='<password>'.$this->dorandompassword().'</password>'; // zimbra needs a password.. :(
 				
 				// <-start specific
 				
 				// generate email alias 
-				if(!$this->checkmail($f['email_alias']) && $f['vname']!='' && $f['nname']!=''){
-					$f['email_alias'][]=substr($f['vname'],0,1).'.'.$f['nname'].'@'.$this->domain;
+				if(!$this->check($f['email_alias'],'email') && $f['fname']!='' && $f['sname']!=''){
+					$a=substr($f['fname'],0,1).'.'.$f['sname'].'@'.zimbraConfig::defaultEmailDomain;
+					if($this->check($a,'email')){
+						$f['email_alias'][]=$a;
+					}
 				}
 				// default class of service
 				if($f['cos']==''){
@@ -117,31 +125,32 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 				}
 				// end specific ->
 				
-				$soap='<name>'.$f['email'].'</name>'.$soap;
+				$soap='<name>'.$f['uid'].'</name>'.$soap;
 
 			// Modify
 			}else{
 				$what='ModifyAccountRequest';
-				
-				if($soap==''){
-					$soap='<id>'.$zuid.'</id>'.$soap;	
-				}
+				$soap='<id>'.$zuid.'</id>'.$soap;	
 			}
 			
 			// Execute soap
 			if($soap!=''){
 				$soap=array($what,$soap);
+				
 				$ret=$this->doadminsoap($soap);
-				         
-				$zuid=$ret['soap:Body']['ModifyAccountResponse']['account']['id'];
+				if($what=='CreateAccountRequest'){
+					$zuid=$ret['soap:Body']['CreateAccountResponse']['account']['id'];
+				}else{
+					$zuid=$ret['soap:Body']['ModifyAccountResponse']['account']['id'];
+				}
 			}
 			
 			// Manage Aliase
 			if($f['email_alias']!=''){
-				$this->doAccountAliase($zuid,$f['email_alias'],'user','uid');
+				$this->_doAccountAliase($zuid,$f['email_alias'],'user','uid');
 			}
 		
-		// Delete
+		// Delete, works.
 		}else{
 			
 			// Nothing to delete
@@ -150,7 +159,7 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 				
 			// Delete
 			}else{
-				$soap=array('RemoveAccountRequest','<id>'.$zuid.'</id>');
+				$soap=array('DeleteAccountRequest','<id>'.$zuid.'</id>');
 				$ret=$this->doadminsoap($soap,1);
 			}
 		}
@@ -159,6 +168,12 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 
 	/**
 	 * Check Helper for setRemoveUser
+	 * if value = "-" => var get empty string and it returns true
+	 * for replace the value (enabling deleting with "-")
+	 *
+	 * checks if value exists, with defined rules
+	 *
+	 * returns false if not.
 	 *
 	 * @param  $value 
 	 * @param  $mode 
@@ -166,20 +181,22 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 	 * @see    setRemoveUser
 	 * @return  boolean passed/not passed compared to mode
 	 */
-	private function check(&$value,$mode){
-		if($mode!=0 && ($value=='' || $value==null ))return false;
+	private function check(&$value,$mode=0){
 		if($value=='-'){
 			$value='';
 			return true;
 		}
+		$value=trim($value);
 		switch($mode){
-			case 0: if($value=='')return false;
-			case 1: if($value=='')return false;
-			case 2: if($value=='')return false;
-			case 3: if($value=='')return false;
+			case 0:
+			case '0': if($value=='' || $value==null)return false;break;
+			case 'phone': if($value=='')return false;break;
+			case 'postal': if(!is_numeric($value))return false;break;
+			case 'password': if($value=='')return false;break;
+			case 'email': if(!preg_match( "/^([a-zA-Z0-9])+([a-zA-Z0-9._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9._-]+)+$/", $value))return false;break;
 			default: return false;
 		}
-		
+		return true;
 	}
 	
 	/**
@@ -221,7 +238,7 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 				if(isset($ret['soap:Body']['CreateDistributionListResponse']['dl']['id'])){
 					$id=$ret['soap:Body']['CreateDistributionListResponse']['dl']['id'];
 					
-					$this->doAccountAliase($did,$distribution['alias'],'dist');
+					$this->_doAccountAliase($did,$distribution['alias'],'dist');
 				}
 			// Modify
 			}else{
@@ -233,7 +250,7 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 				
 				$ret=$this->doadminsoap($soap);
 				
-				$this->accountDoAlias($did,$distribution['alias'],'dist');
+				$this->_doAccountAliase($did,$distribution['alias'],'dist');
 			}
 		
 		// Delete
@@ -251,7 +268,18 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 		}
 	}
 	
-	
+	/**
+	 * Add/Remove Alias of Distlist, User
+	 *
+	 * @param  $id
+	 * @param  $alias
+	 * @param  $distlist
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return
+	 */
+	public function doAccountAliase($params){
+		$this->_doAccountAliase($params['uid'],$params['email_aliase']);
+	}
 	/**
 	 * Add/Remove Alias of Distlist, User
 	 *
@@ -261,7 +289,7 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 	 * @author	Günther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
-	public function doAccountAliase($id,$alias,$distlist='user',$idby='name'){
+	public function _doAccountAliase($id,$alias,$distlist='user',$idby='name'){
 		
 		// User Alias
 		if($distlist=='user'){
@@ -290,45 +318,58 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 		
 		foreach($alias as $alias2) {
 			$a=substr($alias2,0,1);
-			$alias=str_replace(array('+','-'),'',substr($alias2,1)); // Remove all + and -, only first is used.
 			
-			$soap='<id>'.$zid.'</id><alias>'.$alias.'</alias>';
+			if($a=='-'||$a=='+')$alias2=substr($alias2,1); // Remove all + and -, only first is used.
+			
+			$soap='<id>'.$zid.'</id><alias>'.$alias2.'</alias>';
 			
 			if($a=='-'){
 				$soap=array('Remove'.$what.'Request',$soap);
 			}else{
-				if($a!='+')$alias=$a.$alias;
 				$soap=array('Add'.$what.'Request',$soap);
 			}
 			
 			$this->doadminsoap($soap,1);
 		}
 	}
-	
+
 	/**
-	 * Set Class of Service to Name
+	 * Set Class of Service to  User
+	 *
+	 * @param array $user given user (user[uid] =email necessary)
+	 * @param  $cosname
+	 * @author Günther Homolka <g.homolka@belisk.com>
+	 * @return array errs
+	 */
+	function setClassOfService($params){
+		$this->_setClassOfService($params['uid'],$params['cosname']);
+	}
+	/**
+	 * Set Class of Service to  User
 	 *
 	 * @param array $user given user (user[uid] =email necessary)
 	 * @param  $cosname 
 	 * @author Günther Homolka <g.homolka@belisk.com> 
 	 * @return array errs
 	 */
-	function setClassOfService($user,$cosname){
+	function _setClassOfService($user,$cosname){
+		$zuid=$this->getAccountIdbyName($user);
+		if(!$zuid)return false;
 		
-		$uid=$this->getZimbraIdbyName($user[uid]);
-		if(!$uid)return $this->lasterror;
+		$cosid=$this->getCosIdbyName($cosname);
+		if(!$cosid)return false;
 		
-		$cosid=$this->getCosIdbyName($params[1]);
-		if(!$cosid)return $this->lasterror;
-		
-		$soap=array('ModifyAccountRequest','<id>'.$uid.'</id><a n="zimbraCOSId">'.$cosid.'</a>');
+		$soap=array('ModifyAccountRequest','<id>'.$zuid.'</id><a n="zimbraCOSId">'.$cosid.'</a>');
 
 		return $this->doadminsoap($soap,1);		
 	}
 
 
 	/**
-	 *
+	 * Add/Remove Distribution list to/from User
+	 * empty/+ add
+	 * - remove
+	 * a@domain.com; +distlist1@domain.com;distlist1@domain.com,-distlist1@domain.com
 	 *
 	 * @param  $uid 
 	 * @param  $dids 
@@ -375,16 +416,19 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 	
 	
 	/**
+	 * Add/Remove users to/from Distribution List
+	 * empty/+ add
+	 * - remove
+	 * +distlist1@domain.com; +a@domain.com, b@domain.com, - c@domain.com
 	 *
-	 *
-	 * @param  $did 
-	 * @param  $uids 
+	 * @param  $did Distribution Name
+	 * @param  $uids User Names
 	 * @author	Günther Homolka <g.homolka@belisk.com> 
-	 * @return 
+	 * @return void
 	 */
 	function DistributionlistChangeUser($did,$uids){
 		
-		$dist=$this->getDistributionbyName($verteilerlistid);
+		$dist=$this->getDistributionbyName($did);
 				
 		if($dist['zid']==-1){
 			return array(-1,'Error "'.$did.'" not found');
@@ -409,68 +453,57 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 				$soap_a.='<dlm>'.$param.'</dlm>';
 			}
 		}
-		
+		// If there are users to add
 		if($soap_a!=''){
-			$soap=array('AddDistributionListMemberRequest','<id>'.$verteilerlistid.'</id>'.$soap_a);
+			$soap=array('AddDistributionListMemberRequest','<id>'.$did.'</id>'.$soap_a);
 			$ret=$this->doadminsoap($soap);
 		}
-		
+
+		// If there are users to remove
 		if($soap_r!=''){
-			$soap=array('RemoveDistributionListMemberRequest','<id>'.$verteilerlistid.'</id>'.$soap_r);
+			$soap=array('RemoveDistributionListMemberRequest','<id>'.$did.'</id>'.$soap_r);
 			$ret=$this->doadminsoap($soap);	
 		}
-		
 	}
 	
 	
-	// ready
+	/**
+	 * Get CosID by Name
+	 *
+	 * @param String $cosname
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return false or COSID
+	 */
 	function getCosIdbyName($cosname){
+		$cachegroup='cosids';
+		$cname=$cosname;
 		
-		if($cosname!=''){
-			$cachegroup='cosids';
-			$cname=$cosname;
+		$cache=$this->getCache($cachegroup,$cname);
+		if(!$cache){
 			
-			$cache=$this->getCache2($cachegroup,$cname);
-			if($cache===false){
-				
-				$soap=array('GetCosRequest','<cos by="name">'.$cosname.'</cos>');
-				$ret=$this->doadminsoap($soap);
-				
-				$cache=NULL;
-				if(isset($ret['soap:Body']['GetCosResponse']['cos']['id'])){
-					$cache=$ret['soap:Body']['GetCosResponse']['cos']['id'];	
-				}
-				$this->setCache2($cachegroup,$cname,$cache);
+			$soap=array('GetCosRequest','<cos by="name">'.$cosname.'</cos>');
+			$ret=$this->doadminsoap($soap);
+			
+			$cache=c($ret['soap:Body']['GetCosResponse']['cos']['id']);
+			
+			if(!$cache){
+			    return false;
 			}
-			$cosid=$cache;
-			
-			return $cosid;
+			$this->setCache($cachegroup,$cname,$cache);
 		}
+		
+		return $cache;
 	}		
 	
-	// ready
-	function getAccountIdbyName($name){
-		$ret=$this->getAccountbyName($name);
-		
-		if(isset($ret['id'])){
-			return $ret['id'];
-		}else{
-			return -1;
-		}
 
-	}
-	// ready
-	function getAccountbyName($name){
-		$soap=array('GetAccountRequest','<account by="name">'.$name.'</account>');
-		$ret=$this->doadminsoap($soap);
-		
-		if(isset($ret['soap:Body']['GetAccountResponse']['account'])){
-			return $ret['soap:Body']['GetAccountResponse']['account'];
-		}else{
-			return -1;
-		}
-	}
-	
+	/**
+	 * Get CosID by Name
+	 *
+	 * @param String $name
+	 * @param Boolean $getlist List of members??
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return false or COSID
+	 */
 	function getDistributionIdbyName($name,$getlist=0){
 		
 		$soap='<dl by="name">'.$name.'</dl>'; 
@@ -482,21 +515,14 @@ class zimbraActionsAdmin_set1 extends zimbraActionsAdmin_common{
 		
 		
 		$ret=$this->doadminsoap($soap);
-		
-		if(isset($ret['soap:Body']['soap:Fault']['soap:faultstring'])){
-			
-			echo "FEHLER!!";
-			
-			return $ret['soap:Body']['soap:Fault']['soap:faultstring'];
-		}else{
-			$id=$ret['soap:Body']['GetDistributionListResponse']['dl']['id'];
-			
-			if($getlist!=0){
-				return array($id,$ret['soap:Body']['GetDistributionListResponse']['dl']['dlm']);
-			}
-			
-			return $id;
+
+		$id=c($ret['soap:Body']['GetDistributionListResponse']['dl']['id']);
+		if(!$id)return false;
+
+		if($getlist){
+		      return array($id,c($ret['soap:Body']['GetDistributionListResponse']['dl']['dlm']));
 		}
+		return $id;
 	}
 }
 

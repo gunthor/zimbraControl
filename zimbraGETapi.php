@@ -1,8 +1,8 @@
-ï»¿<?PHP
+<?PHP
 /***************************************************************
 *  Copyright notice
 *
-*  (c) 2010 GÃ¼nter Homolka 2010 (g.homolka@belisk.com)
+*  (c) 2010 Günter Homolka 2010 (g.homolka@belisk.com)
 *  All rights reserved
 *
 *  The zimbraControl project is free software; you can redistribute 
@@ -30,7 +30,7 @@
  * GETAPI: Control Zimbra via GET/POST CMDs
  *
  * @package    zimbraControl
- * @author     GÃ¼nter Homolka 2010 <g.homolka@belisk.com>
+ * @author     Günter Homolka 2010 <g.homolka@belisk.com>
  * @copyright  2010 The Authors
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License
  * @version    1.0.0
@@ -45,7 +45,7 @@
 //error_reporting(0);						// Error Reporting komplett abschalten
 //error_reporting(E_ERROR | E_WARNING | E_PARSE);		// Nur einfache Fehler melden
 //error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);	// E_NOTICE ist sinnvoll um uninitialisierte oder falsch geschriebene Variablen zu entdecken
-//error_reporting(E_ALL ^ E_NOTICE);				// Melde alle Fehler auÃŸer E_NOTICE (Dies ist der Vorgabewert in php.ini)
+//error_reporting(E_ALL ^ E_NOTICE);				// Melde alle Fehler außer E_NOTICE (Dies ist der Vorgabewert in php.ini)
 //error_reporting(E_ALL);					// Melde alle PHP Fehler
 error_reporting(E_ALL);
 
@@ -67,9 +67,6 @@ Delimiter are "," and ":". to use them in values escape them with "#". Escape "#
 e.g. [valuea => valuea][valu,,ea => valu#,#,ea][valu,:#ea => valu#,#:##ea]
 */
 
-//$_GET['cmd']='SU,36476,g.#,_###,homolka@rk3002.com,,GÃ¼nt#:_###:he:r,Homolka,g.homolka@belisk.com,,,,,3002,Purkersdorf';
-
-$_GET['cmd']='SHELL,zmprov gaa';
 
 
 if(!isset($_GET['cmd'])){
@@ -81,24 +78,32 @@ if(!is_array($_GET['cmd'])){
 	$_GET['cmd']=array($_GET['cmd']);
 }
 
-
-$included=array();
-
+$includedclasses=array();
 
 
-$cmdcoder=new CMDParser();
+
+$cmdparser=new CMDParser();
 
 foreach($_GET['cmd'] as $command){
-	list($err,$cmd)=$cmdcoder->decode($command);
-	print_r($cmd);
+	list($err,$cmd)=$cmdparser->decode($command);
+
 	if($err){
-		echo $err;
+		zlog::log($err);
 	}else{
-		if(!isset($included[$cmd['class']])){
+	    zlog::debugLog('cmd',$cmd);
+	    try{
+	     if(!isset($includedclasses[$cmd['class']])){
 			require_once 'classes/'.$cmd['class'].'.php';
-			$included[$cmd['class']]=new $cmd['class']();
+			$includedclasses[$cmd['class']]=new $cmd['class']();
 		}
-		list($ret,$return)=call_user_func_array(array($included[$cmd['class']], $cmd['action']), $cmd['params']);
+
+		list($ret,$return)=call_user_func_array(array($includedclasses[$cmd['class']], $cmd['action']), $cmd['params']);
+		if($err)zlog::log($err);
+		
+	    }catch(Exception $e){
+		zlog::log(zerror::err('fail: cannot initalize class.',$cmd['class'],zerror::critical));
+	    }
+
 	}
 }
 

@@ -2,7 +2,7 @@
 /***************************************************************
 *  Copyright notice
 *
-*  (c) 2010 G�nter Homolka 2010 (g.homolka@belisk.com)
+*  (c) 2010 G�nter Homolka 2010 (g.homolka@belisk.com)
 *  All rights reserved
 *
 *  The zimbraControl project is free software; you can redistribute 
@@ -30,7 +30,7 @@
  * define CMDs
  * 
  * @package    zimbraControl
- * @author     G�nter Homolka 2010 <g.homolka@belisk.com>
+ * @author     G�nter Homolka 2010 <g.homolka@belisk.com>
  * @copyright  2010 The Authors
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License
  * @version    1.0.0
@@ -49,7 +49,9 @@ class zimbraCMD{
 	 * cmd divided by , 
 	 * [..] optional
 	 * {..} many, divided by :
-	 * 
+	 *
+         * ,: escaped by #
+         *
 	 * [#,=>,][##=>#][#:=>:]
 	 * e.g. [:: => #:#:][#, => ###,]
 	 * 
@@ -60,25 +62,25 @@ class zimbraCMD{
 		#############################################################
 		# Admin  Possibilities
 		#############################################################
-		'SU'=>array( // Set User
+		'SU'=>array( // Set User √
 			'class'=>'zimbraActionsAdmin_set1',
 			'action'=>'setRemoveUser',
-			'params'=>array('uid,{email_alias},[password],[fname],[sname],[email],[cos],[title],[phone],[street],[postal],[location]',1),
+			'params'=>array('uid,{email_alias},[password],[fname],[sname],[forwarding_email],[cos],[title],[phone],[street],[postal],[location]',1),
 		),
-		'UCA'=>array( // User Change Alias [nothing/+/-] for add/add/remove 
+		'UCA'=>array( // User Change Alias [nothing/+/-] for add/add/remove √
 			'class'=>'zimbraActionsAdmin_set1',
 			'action'=>'doAccountAliase',
 			'params'=>array('uid,{email_aliase}','user'),
 		),
-		'RU'=>array( // Remove User
+		'RU'=>array( // Remove User √
 			'class'=>'zimbraActionsAdmin_set1',
 			'action'=>'setRemoveUser',
 			'params'=>array('uid',0),
 		),
-		'USC'=>array( // User 	setClassOfService
+		'USC'=>array( // User setClassOfService √
 			'class'=>'zimbraActionsAdmin_set1',
 			'action'=>'setClassOfService',
-			'params'=>array('uid,cosid'),
+			'params'=>array('uid,cosname'),
 		),
 
 
@@ -128,7 +130,7 @@ class zimbraCMD{
 		'SM'=>array( // Sendmessage
 			'class'=>'zimbraActionsUser_set1',
 			'action'=>'sendMessage',
-			'params'=>array('uid,{dids}')
+			'params'=>array('',array('POST'=>array('messages'=>array(array('uids'=>array('uids'),'message'=>'message','attachements'=>'attachements'))))),
 		),
 		
 		'GNM'=>array( // Get new Mails
@@ -141,7 +143,7 @@ class zimbraCMD{
 		#############################################################
 		# SHELL
 		#############################################################
-		'SHELL'=>array( // do shell cmd
+		'SHELL'=>array( // do shell cmd  √
 			'class'=>'zimbraShell',
 			'action'=>'doCMD',
 			'params'=>array('cmd')

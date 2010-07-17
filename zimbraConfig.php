@@ -1,8 +1,8 @@
-ï»¿<?PHP
+<?PHP
 /***************************************************************
 *  Copyright notice
 *
-*  (c) 2010 GÃ¼nter Homolka 2010 (g.homolka@belisk.com)
+*  (c) 2010 Günter Homolka 2010 (g.homolka@belisk.com)
 *  All rights reserved
 *
 *  The zimbraControl project is free software; you can redistribute 
@@ -38,7 +38,7 @@
  * in doc/dlls you will find some version of this dll.
  * 
  * @package    zimbraControl
- * @author     GÃ¼nter Homolka 2010 <g.homolka@belisk.com>
+ * @author     Günter Homolka 2010 <g.homolka@belisk.com>
  * @copyright  2010 The Authors
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License
  * @version    1.0.0
@@ -50,6 +50,8 @@
  * @todo       Tests that need to be made:
  *              - 
  */
+//include 'zimbraConfig2.php';
+
 class zimbraConfig{
 	#############################################################
 	# Main

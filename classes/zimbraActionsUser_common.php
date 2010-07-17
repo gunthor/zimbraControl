@@ -45,5 +45,140 @@ require_once 'zimbraActions.php';
  *              - 
  */
 class zimbraActionsUser_common extends zimbraActions{
+	/**
+	 * Get Folder Id of folder from user
+	 *
+	 * @param String $uid user@domain.com
+	 * @param String $folderpath (e.g. inbox/dir1)
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return folderid, or false if not successfull
+	 */
+	public function getFolderid($uid,$folderpath){
 
+		$cachegroup='folders_'.$cmd['uid'];
+		$cname='f_'.$cmd['folder'];
+
+		// getfolderid
+		$efolderid=$this->getCache($cachegroup,$cname);
+		if($efolderid===false){
+			$soap=array('GetFolderRequest','zimbraMail','<folder path="'.$folderpath.'"/>');
+			$ret=$this->dousersoap($cmd['uid'],$soap);
+
+			$efolderid=c($ret['soap:Body']['GetFolderResponse']['folder']['id']);
+
+			if(!$efolderid || !is_numeric($efolderid)){
+				return false;
+			}
+
+			$this->setCache($cachegroup,$cname,$efolderid);
+		}
+		return $efolderid;
+	}
+
+
+	/**
+	 * Do Headers to readable form...
+	 *
+	 * @param array $from headers from..
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return array readable Headers
+	 */
+	private function doReceiptHeaders($from){
+		$ret=array();
+
+		foreach($from as $f){
+			$name=$f['p'].'( '.$f['d'].' )';
+			$email=$f['a'];
+
+			if(strpos($f['t'],'t')){
+				$ret['to'][]=array('name'=>$name,'email'=>$email);
+			}
+
+			if(strpos($f['t'],'f')){
+				$ret['from'][]=array('name'=>$name,'email'=>$email);
+			}
+
+			if(strpos($f['t'],'c')){
+				$ret['cc'][]=array('name'=>$name,'email'=>$email);
+			}
+		}
+		return $ret;
+	}
+
+
+
+
+
+	/**
+	 *
+	 *
+	 * @param String $externID
+	 * @param String $zimbraID
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return void
+	 */
+	function getIdFromExternalId($externID){
+		$t=-1;
+		try{
+			$ret=@unserialize(@file_get_contents($this->path.'oracle_zimbra_id.txt'));
+			if(isset($ret[$oracleid]) && $ret[$oracleid]!=''){
+				$t=$ret[$externID];
+			}
+		}catch(Exception $e){
+		}
+
+		return false;
+	}
+
+	/**
+	 *
+	 *
+	 * @param String $externID
+	 * @param String $zimbraID
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return void
+	 */
+	function setExternalIdMap($externID,$zimbraID){
+		try{
+			$ret=@unserialize(@file_get_contents($this->path.'oracle_zimbra_id.txt'));
+			$ret[$externID]=$zimbraID;
+
+			file_put_contents($this->path.'oracle_zimbra_id.txt',serialize($ret));
+
+		}catch(Exception $e){
+			errlog("Couldn't save: OracleId: $oraclid => ZimbraId: $zimbraid");
+		}
+
+	}
+
+	/**
+	 *
+	 *
+	 * @param  $zmailid
+	 * @param int $format 0: ddmmYYYY_hhii,  1: yyyymmddThhiiss
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return
+	 */
+	function TimeToStamp($time,$format=0){
+
+		//ddmmYYYY_hhii
+		if($format==0){
+			$d=substr($time,0,2);
+			$m=substr($time,2,2);
+			$y=substr($time,4,4);
+			$h=substr($time,9,2);
+			$i=substr($time,11,2);
+		//20100213T142000
+		}else if($format==1){
+			$y=substr($time,0,4);
+			$m=substr($time,4,2);
+			$d=substr($time,6,2);
+			$h=substr($time,9,2);
+			$i=substr($time,11,2);
+		}
+
+		$t=mktime($h,$i,0,$m,$d,$y);
+		echo date('d.m.Y H:i:s',$t);
+		return $t;
+	}
 }

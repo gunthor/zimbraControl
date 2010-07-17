@@ -26,6 +26,8 @@
 
 require_once 'zimbraActions.php';
 
+
+
 /**
  * zimbraControl - Toolkit to control Zimbra
  * 
@@ -45,6 +47,48 @@ require_once 'zimbraActions.php';
  */
 class zimbraActionsAdmin_common extends zimbraActions{
 
+	/**
+	 * generate a uid from raw uid
+	 * ("user1" => "user1@domain.com",
+	 *  "user1@domain2.com" => "user1@domain2.com")
+	 *
+	 * @param String $name
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return String zimbrauid
+	 */
+	function  makeUid($uid){
+	    if(!strpos($uid,'@')){
+		return $uid.'@'.zimbraConfig::defaultEmailDomain;
+	    }
+	    return $uid;
+	}
+	/**
+	 * Get the Account ID by account Name name
+	 *
+	 * @param String $name
+	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @return String AccountId, -1 @ error
+	 */
+	function getAccountIdbyName($name){
+		$ret=$this->getAccountbyName($name);
+		return c($ret['id']);
+	}
+
+	/**
+	 * Get the account by Name
+	 *
+	 * @param String $name
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return array Account Details, -1 @ Error
+	 */
+	function getAccountbyName($name){
+		$soap=array('GetAccountRequest','<account by="name">'.$name.'</account>');
+	
+		$ret=$this->doadminsoap($soap);
+		$a=c($ret['soap:Body']['GetAccountResponse']['account']);
+		echo "-$a-";
+		return c($ret['soap:Body']['GetAccountResponse']['account']);
+	}
 
 }
 

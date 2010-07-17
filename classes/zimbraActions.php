@@ -2,7 +2,7 @@
 /***************************************************************
 *  Copyright notice
 *
-*  (c) 2010 Günter Homolka 2010 (g.homolka@belisk.com)
+*  (c) 2010 Gï¿½nter Homolka 2010 (g.homolka@belisk.com)
 *  All rights reserved
 *
 *  The zimbraControl project is free software; you can redistribute 
@@ -39,7 +39,7 @@ require_once 'zimbraError.php';
  * user id uid is always the email address! (when @ doesn't exist't, the default domain get's added.
  *
  * @package    zimbraControl
- * @author     Günter Homolka 2010 <g.homolka@belisk.com>
+ * @author     Gï¿½nter Homolka 2010 <g.homolka@belisk.com>
  * @copyright  2010 The Authors
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License
  * @version    1.0.0
@@ -59,18 +59,19 @@ class zimbraActions{
 	/**
 	 * Constructor
 	 *
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return void
 	 */
 	public function __construct(){
 		$this->zimbraSoap=new zimbraSoapApi();
+		$this->path=dirname(__FILE__).'/../';
 	}
 	
 
 	/**
 	 * Destructor
 	 * save Cache
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
 	public function __destruct(){
@@ -85,7 +86,7 @@ class zimbraActions{
 	 *
 	 * @param  $soap $soap[0]=action, $soap[1]=restliches soap
 	 * @param  $showerrorsonly
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
 	function doAdminSoap($soap,$showerrorsonly=0){
@@ -93,12 +94,10 @@ class zimbraActions{
 		$config=array();
 		$ret=$this->zimbraSoap->doadmin(zimbraConfig::adminAccount_user,zimbraConfig::adminAccount_password,$soap[0],$soap[1],$config);
 		
-		echo "GETAPI admin<br><br>";
-		//p($ret);
-		
 		if($showerrorsonly){
 			return (isset($ret['soap:Body']['soap:Fault']['soap:faultstring']))?$ret['soap:Body']['soap:Fault']['soap:faultstring']:'';
 		}
+		
 		return $ret;
 	}
 	
@@ -110,7 +109,7 @@ class zimbraActions{
 	 * @param  $soap $soap[0]=action, $soap[1]=urn, $soap[2]=rest of soap
 	 * @param  $naskey donnotaskey: Ausschalten: bei <a n="zimbramailirgendwas">Value</a> => array[zimbramailirgendwas]=Value
 	
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
 	function doUserSoap($user,$soap,$naskey=false){
@@ -118,8 +117,6 @@ class zimbraActions{
 		$config=array('donnotaskey'=>!$naskey);
 		$ret=$this->zimbraSoap->douser($user,$soap[0],$soap[1],$soap[2],$config);
 		
-		echo "GETAPI user<br><br>";
-		//p($ret);
 		
 		return $ret;
 	}
@@ -133,7 +130,7 @@ class zimbraActions{
 	 * @param  $val 
 	 * @param  $debug 
 	 * @param  true 
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
 	function doLog($val){
@@ -150,7 +147,7 @@ class zimbraActions{
 	 * @param  $key  key of cached value
 	 * @param  $val 
 	 * @param  $unset 
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return  void
 	 */
 	function setCache($cachegroup, $key, $val,$unset=false){
@@ -166,10 +163,10 @@ class zimbraActions{
 	/**
 	 * Get the value of cache indexed by group and key
 	 *
-	 * @param  $cachegroup 
-	 * @param  $key 
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
-	 * @return 
+	 * @param String $cachegroup
+	 * @param String  $key
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
+	 * @return mixed cached Value
 	 */
 	function getCache($cachegroup, $key){
 		if(!$this->cache)$this->initCache();
@@ -185,7 +182,7 @@ class zimbraActions{
 	/**
 	 * initialize cache
 	 *
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return void
 	 */
 	function initCache(){
@@ -201,7 +198,7 @@ class zimbraActions{
 	/**
 	 * Save Cache
 	 *
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return void
 	 */
 	function saveCache(){
@@ -214,7 +211,7 @@ class zimbraActions{
 	 * trim...
 	 *
 	 * @param  $value 
-	 * @author	Günther Homolka <g.homolka@belisk.com> 
+	 * @author	Gï¿½nther Homolka <g.homolka@belisk.com> 
 	 * @return 
 	 */
 	function cleanval($value){

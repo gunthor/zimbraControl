@@ -63,15 +63,14 @@ class zerror{
 	const critical=true;
 	const notcritical=false;
 	
-	public static function err($errormsg,$critical,$config=array()){
-		zerror::error($errormsg,$critical,$config);
+	public static function err($errormsg,$params,$critical=zerror::notcritical,$config=array()){
+		zerror::error($errormsg,$params,$critical,$config);
 	}
 	
-	public function error($errormsg,$critical,$config=array()){
-		zlog::log($errormsg);
+	public function error($errormsg,$params,$critical=zerror::notcritical,$config=array()){
+		zlog::log($errormsg,$params);
 		
 		if($critical==zerror::critical){
-			echo $errormsg;
 			exit;
 		}
 	}

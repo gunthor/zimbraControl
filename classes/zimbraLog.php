@@ -24,6 +24,7 @@
 *  This copyright notice MUST APPEAR in all copies of the script!
 ***************************************************************/
 
+require_once 'zimbraConfig.php';
 /**
  * zimbraControl - Toolkit to control Zimbra
  * 
@@ -42,33 +43,69 @@
  *              - 
  */
 class zlog{
-	
-	public function log($log){
-		
-		zlog::addtofile('SOAPLog.txt',$log);
+	public static $debugLog='';
+
+	public function log($log, $params='',$file='zimbraLog.txt'){
+		if($params!=''){
+		    ob_start();
+		    echo "<pre>";
+		    echo "$log\n";
+		    print_r($params);
+		    echo "</pre>";
+		    $log=ob_get_clean();
+		}
+
+		$f="--------------- ".date('d.m.Y H:i')."---------------\n\n".$log."\n";
+
+		zlog::addToLogFile($file,$log);
 		
 		
 	}
 	
-	public function errlog($log){
+	public function soapErrLog($log, $params=''){
 		
-		zlog::addtofile('SOAPErr.txt',$errlog);
-		
-		
+	    zlog::log($log,$params,'SOAPErr.txt');
 	}
 
 	public function shelllog($errlog,$cmdlog){
-		
+
 		$errlog="errlog\n$errlog\n";
 		$cmdlog="errlog\n$errlog\n";
-		
-		zlog::addtofile('shelllogCMD.txt',$errlog);
-		zlog::addtofile('shelllogErr.txt',$cmdlog);
-		
+
+		zlog::addToLogFile('shelllogCMD.txt',$errlog);
+		zlog::addToLogFile('shelllogErr.txt',$cmdlog);
+
 	}
-	
-	function addtofile($file,$log){
-		if($debug){
+
+	/**
+	 * Makes a debugLog of Vars
+	 *
+	 * @param  $cmd
+	 * @author	Günther Homolka <g.homolka@belisk.com>
+	 * @return $cmdarray
+	 */
+	public function debugLog($msg, $log){
+
+		ob_start();
+		echo "<pre>";
+		echo "$msg\n";
+		print_r($log);
+		echo "</pre>";
+		$f=ob_get_clean();
+
+		$f="--------------- ".date('d.m.Y H:i')."---------------\n\n".$f."\n";
+		zlog::$debugLog=zlog::$debugLog.$f;
+
+		echo $f;
+	}
+
+	function hardError($log, $params){
+	    zlog::log($log,$params,'SOAPErr.txt');
+	    echo "Hard Failure. Check LogFiles. ID:";
+	    exit;
+	}
+	function addToLogFile($file,$log){
+		if(zimbraConfig::debug){
 			echo "<pre>".$file."\n".$log."</pre>";
 		}else{
 			$file=dirname(__FILE__).'../log/'.$file;
@@ -76,7 +113,8 @@ class zlog{
 			if(file_exists($file)){
 				$f=file_get_contents($file);
 			}
-			$f=$log."\n\n".$f;
+
+			$f="--------------- ".date('d.m.Y H:i')."---------------\n\n".$log."\n".$f;
 			file_put_contents($file,$f);
 		}
 	}

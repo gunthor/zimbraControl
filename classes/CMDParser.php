@@ -32,7 +32,7 @@ require_once 'zimbraCMD.php';
 /**
  * zimbraControl - Toolkit to control Zimbra
  * 
- * Parse CMD Commands to an array, whicht zimbraGETapi can execute
+ * Parse CMD Commands to an array, which zimbraGETapi can execute
  * 
  * @package    zimbraControl
  * @author     Günter Homolka 2010 <g.homolka@belisk.com>
@@ -49,11 +49,11 @@ require_once 'zimbraCMD.php';
 class CMDParser extends zimbraCMD{
 
 	/**
-	 *
+	 * Decodes an Command String to the array
 	 *
 	 * @param  $cmd 
 	 * @author	Günther Homolka <g.homolka@belisk.com> 
-	 * @return 
+	 * @return $cmdarray
 	 */
 	function decode($command){
 		
@@ -62,51 +62,62 @@ class CMDParser extends zimbraCMD{
 		// if cmd exists...
 		if(isset($this->conf[$cmd[0]])){
 
+                        // get Conf Set
 			$set=$this->conf[$cmd[0]];
 			
 			$ncmd=array();
 			$ncmd['class']=$set['class'];
 			$ncmd['action']=$set['action'];
 			
-			// Params 1
+			// dynamic params, from cmd
 			$params=explode(',',$set['params'][0]);
 			$x=1;
 			$param1=array();
 			foreach($params as $param){
 				
-				// many
+				// when many "{..}"
 				if(substr($param,0,1)=='{'){
-					//if it's not an array...
+					//if it's not many ({)not an array...)
 					if(!is_array($cmd[$x])){
 						$cmd[$x]=array($cmd[$x]);
 					}
 					$par=substr($param,1,-1);
 				
-				// optional
+				// optional "[..]" todo: mark it..?
 				}else if(substr($param,0,1)=='['){
-					//if it's an array...
-					if(is_array($cmd[$x])){
-						$cmd[$x]='';
-					}
-					$par=substr($param,1,-1);
-				
-					// must
+                                        // When many..
+					if(substr($param,1,1)=='{'){
+                                            //if it's not an array...
+                                            if(!is_array($cmd[$x])){
+                                                    $cmd[$x]=array($cmd[$x]);
+                                            }
+                                            $par=substr($param,2,-2);
+                                        // not many   
+                                        }else{
+                                            //if it's an array...
+                                            if(is_array($cmd[$x])){
+                                                    $cmd[$x]='';
+                                            }
+                                            $par=substr($param,1,-1);
+                                        }
+				// normal, must
 				}else{
 					$par=$param;
 					//if it's an array...
-					if(is_array($cmd[$x])){
-						$cmd[$x]=implode(',',$cmd[$x]);
-					}
+					//if(is_array($cmd[$x])){
+					//	$cmd[$x]='';
+					//}
 				}
-				// save param to param1
+				// save it to params[config_key]=cmdparam1
 				$param1[$par]=$cmd[$x];
-				$x++;
+				$x++; // nect config_key
 			}
 			$ncmd['params'][]=$param1;
 			
-			// add rest of params...
+			// static params...
 			$x=0;
 			foreach($set['params'] as $param){
+				// first is the dynamic...
 				if($x!=0){
 					$ncmd['params'][]=$param;
 				}else{
@@ -115,12 +126,15 @@ class CMDParser extends zimbraCMD{
 			}
 			return array(null,$ncmd);
 		}else{
-			return array(zerror::err('fail: false command)',$this->conf[$cmd],zerror::notcritical),null);
+			return array(zerror::err('fail: command does not exist in the CMD Configs of zimbraCMD.php',$cmd[0]),null);
 		}
 	}
 
 	/**
-	 * Split decoded...
+	 * Split decoded
+         * split by "," and then, when given, by ":" array[n][k] (k optional, when ":" given)
+         * do not split when escaped ("#,", "#:")
+         * replace escaped values to values ("#," => ",", "#:" => ":)
 	 *
 	 * @param  $cmd 
 	 * @author	Günther Homolka <g.homolka@belisk.com> 
